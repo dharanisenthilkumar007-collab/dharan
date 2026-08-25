@@ -81,4 +81,17 @@ app.get("/api/analytics", auth, async (req, res, next) => {
 });
 
 app.use((err, req, res, _next) => { console.error(err); res.status(err.status || 500).json({ message: err.message || "Something went wrong." }); });
-mongoose.connect(process.env.MONGODB_URI).then(() => app.listen(process.env.PORT || 4000, () => console.log("EnerPay API running"))).catch(err => { console.error("MongoDB connection failed", err); process.exit(1); });
+
+async function connectDatabase() {
+  if (!process.env.MONGODB_URI) throw new Error("MONGODB_URI is not configured.");
+  if (mongoose.connection.readyState === 1) return mongoose.connection;
+  return mongoose.connect(process.env.MONGODB_URI);
+}
+
+if (require.main === module) {
+  connectDatabase()
+    .then(() => app.listen(process.env.PORT || 4000, () => console.log("EnerPay API running")))
+    .catch(err => { console.error("MongoDB connection failed", err); process.exit(1); });
+}
+
+module.exports = { app, connectDatabase };

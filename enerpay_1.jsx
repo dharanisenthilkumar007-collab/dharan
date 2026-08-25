@@ -34,8 +34,9 @@ export default function EnerPay() {
   const [token, setToken] = useState(() => localStorage.getItem("enerpay_token"));
   const [account, setAccount] = useState(null);
   const [transactions, setTransactions] = useState([]);
+  const apiBase = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? "http://localhost:4000/api" : "/api");
   const api = async (path, options = {}) => {
-    const response = await fetch(`http://localhost:4000/api${path}`, { ...options, headers: { "Content-Type":"application/json", ...(token ? { Authorization:`Bearer ${token}` } : {}), ...options.headers } });
+    const response = await fetch(`${apiBase}${path}`, { ...options, headers: { "Content-Type":"application/json", ...(token ? { Authorization:`Bearer ${token}` } : {}), ...options.headers } });
     const data = await response.json();
     if (!response.ok) throw new Error(data.message || "Request failed.");
     return data;
