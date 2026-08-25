@@ -37,6 +37,8 @@ export default function EnerPay() {
   const apiBase = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? "http://localhost:4000/api" : "/api");
   const api = async (path, options = {}) => {
     const response = await fetch(`${apiBase}${path}`, { ...options, headers: { "Content-Type":"application/json", ...(token ? { Authorization:`Bearer ${token}` } : {}), ...options.headers } });
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) throw new Error("The deployed API route was not found. Confirm the Vercel deployment includes the api folder, then redeploy.");
     const data = await response.json();
     if (!response.ok) throw new Error(data.message || "Request failed.");
     return data;
