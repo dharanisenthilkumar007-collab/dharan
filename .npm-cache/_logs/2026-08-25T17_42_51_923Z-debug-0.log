@@ -1,0 +1,18 @@
+0 verbose cli C:\Program Files\nodejs\node.exe C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js
+1 info using npm@11.9.0
+2 info using node@v24.14.0
+3 silly config load:file:C:\Program Files\nodejs\node_modules\npm\npmrc
+4 silly config load:file:D:\Enerpay\.npmrc
+5 silly config load:file:C:\Users\dharanidharan s\.npmrc
+6 silly config load:file:C:\Users\dharanidharan s\AppData\Roaming\npm\etc\npmrc
+7 verbose title npm exec vite build
+8 verbose argv "exec" "--cache" ".npm-cache" "--" "vite" "build"
+9 verbose logfile logs-max:10 dir:D:\Enerpay\.npm-cache\_logs\2026-08-25T17_42_51_923Z-
+10 verbose logfile D:\Enerpay\.npm-cache\_logs\2026-08-25T17_42_51_923Z-debug-0.log
+11 silly logfile done cleaning log files
+12 verbose cwd D:\Enerpay
+13 verbose os Windows_NT 10.0.26200
+14 verbose node v24.14.0
+15 verbose npm  v11.9.0
+16 verbose exit 1
+17 verbose code 1
