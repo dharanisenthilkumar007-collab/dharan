@@ -34,6 +34,7 @@ export default function EnerPay() {
   const [token, setToken] = useState(() => localStorage.getItem("enerpay_token"));
   const [account, setAccount] = useState(null);
   const [transactions, setTransactions] = useState([]);
+  const [scannedRecipient, setScannedRecipient] = useState("");
   const apiBase = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? "http://localhost:4000/api" : "/api");
   const api = async (path, options = {}) => {
     const response = await fetch(`${apiBase}${path}`, { ...options, headers: { "Content-Type":"application/json", ...(token ? { Authorization:`Bearer ${token}` } : {}), ...options.headers } });
@@ -85,7 +86,7 @@ export default function EnerPay() {
     }
   }, [screen]);
 
-  const screenProps = { navigate, userData, txHistory, weeklyData, priceData, api, authenticate, refresh, account, signOut };
+  const screenProps = { navigate, userData, txHistory, weeklyData, priceData, api, authenticate, refresh, account, signOut, scannedRecipient, setScannedRecipient };
 
   return (
     <div style={{
@@ -733,13 +734,76 @@ function MarketplaceScreen({ navigate }) {
 }
 
 // ─── QR SCAN ─────────────────────────────────────────────────────
-function QRScanScreen({ navigate, userData }) {
+function QRScanScreen({ navigate, userData, setScannedRecipient }) {
   const [mode, setMode] = useState("scan");
+  const [cameraError, setCameraError] = useState("");
+  const [scanning, setScanning] = useState(false);
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const scanTimerRef = useRef(null);
+
+  const stopCamera = () => {
+    if (scanTimerRef.current) window.clearInterval(scanTimerRef.current);
+    scanTimerRef.current = null;
+    streamRef.current?.getTracks().forEach(track => track.stop());
+    streamRef.current = null;
+    if (videoRef.current) videoRef.current.srcObject = null;
+    setScanning(false);
+  };
+
+  const useScannedCode = rawValue => {
+    const match = String(rawValue).trim().match(/^enerpay:\/\/pay\/(.+)$/i);
+    const recipient = match ? match[1] : String(rawValue).trim();
+    if (!recipient) return;
+    stopCamera();
+    setScannedRecipient(recipient);
+    navigate(SCREENS.SEND_ENERGY);
+  };
+
+  const startCamera = async () => {
+    setCameraError("");
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraError("This browser does not support camera access. Use a current mobile browser over HTTPS.");
+      return;
+    }
+    try {
+      stopCamera();
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+      setScanning(true);
+      if (!window.BarcodeDetector) {
+        setCameraError("Camera is active. QR decoding needs Chrome or another browser that supports BarcodeDetector.");
+        return;
+      }
+      const detector = new window.BarcodeDetector({ formats: ["qr_code"] });
+      scanTimerRef.current = window.setInterval(async () => {
+        if (!videoRef.current || videoRef.current.readyState < 2) return;
+        try {
+          const codes = await detector.detect(videoRef.current);
+          if (codes[0]?.rawValue) useScannedCode(codes[0].rawValue);
+        } catch { /* Ignore a frame that cannot be decoded. */ }
+      }, 350);
+    } catch (error) {
+      setCameraError(error.name === "NotAllowedError" ? "Camera permission was denied. Allow camera access and try again." : "Unable to start the device camera.");
+      stopCamera();
+    }
+  };
+
+  useEffect(() => {
+    if (mode === "scan") startCamera();
+    else stopCamera();
+    return stopCamera;
+  }, [mode]);
+
   return (
     <div style={{ width:"100%", height:"100%", background:"#0a0a1a", display:"flex", flexDirection:"column" }}>
       <StatusBar dark />
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 24px" }}>
-        <BackBtn onBack={() => navigate(SCREENS.DASHBOARD)} dark />
+        <BackBtn onBack={() => { stopCamera(); navigate(SCREENS.DASHBOARD); }} dark />
         <div style={{ fontSize:16, fontWeight:700, color:"#fff" }}>QR Payment</div>
         <div style={{ width:40 }} />
       </div>
@@ -757,7 +821,8 @@ function QRScanScreen({ navigate, userData }) {
 
       {mode==="scan" ? (
         <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:24 }}>
-          <div style={{ position:"relative", width:260, height:260 }}>
+          <div style={{ position:"relative", width:260, height:260, overflow:"hidden", borderRadius:24, background:"#111827" }}>
+            <video ref={videoRef} muted playsInline style={{ width:"100%", height:"100%", objectFit:"cover" }} />
             {/* Scanner frame */}
             <div style={{ position:"absolute", inset:0, border:"2px solid rgba(255,255,255,0.1)", borderRadius:24 }} />
             {["0%,0%","auto,0%","0%,auto","auto,auto"].map((pos,i) => {
@@ -781,20 +846,13 @@ function QRScanScreen({ navigate, userData }) {
               animation:"scanLine 2s ease-in-out infinite",
             }} />
             <style>{`@keyframes scanLine { 0%,100%{top:10%} 50%{top:85%} }`}</style>
-            {/* Grid pattern */}
-            <div style={{ position:"absolute", inset:16, display:"grid", gridTemplateColumns:"repeat(5,1fr)", gridTemplateRows:"repeat(5,1fr)", gap:4, opacity:0.08 }}>
-              {Array.from({length:25}).map((_,i) => (
-                <div key={i} style={{ borderRadius:3, background:"#fff" }} />
-              ))}
-            </div>
-            <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
-              <span style={{ fontSize:13, color:"rgba(255,255,255,0.5)" }}>Scanning…</span>
-            </div>
           </div>
           <div style={{ marginTop:20, textAlign:"center" }}>
-            <div style={{ fontSize:14, color:"rgba(255,255,255,0.7)" }}>Point camera at QR code</div>
-            <div style={{ fontSize:12, color:"rgba(255,255,255,0.4)", marginTop:4 }}>Supports EnerPay, UPI & energy codes</div>
+            <div style={{ fontSize:14, color:"rgba(255,255,255,0.7)" }}>{scanning ? "Point camera at QR code" : "Starting camera…"}</div>
+            <div style={{ fontSize:12, color:"rgba(255,255,255,0.4)", marginTop:4 }}>Supports EnerPay QR payment codes</div>
           </div>
+          {cameraError && <div style={{ marginTop:12, textAlign:"center", color:"#fbbf24", fontSize:12, lineHeight:1.4 }}>{cameraError}</div>}
+          <button onClick={startCamera} style={{ marginTop:16, border:"1px solid rgba(255,255,255,0.35)", borderRadius:10, background:"transparent", color:"#fff", padding:"8px 14px", fontFamily:"inherit", cursor:"pointer" }}>Restart camera</button>
           <div style={{ marginTop:32, display:"flex", gap:12 }}>
             <SecondaryBtn label="Enter UPI ID" />
             <SecondaryBtn label="Phone No." />
@@ -828,10 +886,16 @@ function QRScanScreen({ navigate, userData }) {
 }
 
 // ─── SEND ENERGY ──────────────────────────────────────────────────
-function SendEnergyScreen({ navigate, api, refresh }) {
+function SendEnergyScreen({ navigate, api, refresh, scannedRecipient, setScannedRecipient }) {
   const [sendType, setSendType] = useState("energy");
   const [amount, setAmount] = useState("10");
   const [recipient, setRecipient] = useState(""); const [note, setNote] = useState(""); const [error, setError] = useState(""); const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (scannedRecipient) {
+      setRecipient(scannedRecipient);
+      setScannedRecipient("");
+    }
+  }, [scannedRecipient, setScannedRecipient]);
   const pay = async () => { setError(""); setBusy(true); try { await api("/payments", { method:"POST", body:JSON.stringify({ recipient, kind:sendType, amount, note }) }); await refresh(); navigate(SCREENS.HISTORY); } catch (e) { setError(e.message); } finally { setBusy(false); } };
   return (
     <div style={{ width:"100%", height:"100%", background:"#f0f4ff", display:"flex", flexDirection:"column", overflow:"hidden" }}>
@@ -908,7 +972,7 @@ function SendEnergyScreen({ navigate, api, refresh }) {
           </div>
           {sendType==="energy" && (
             <div style={{ fontSize:12, color:"#64748b", marginTop:6 }}>
-              ≈ ₹{(Number(amount)*6.85).toFixed(2)} at current rate
+              Value: ≈ ₹{(Number(amount)*6.85).toFixed(2)} at current rate — your money balance will not be debited
             </div>
           )}
           <div style={{ display:"flex", gap:8, marginTop:10 }}>

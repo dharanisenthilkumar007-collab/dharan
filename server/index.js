@@ -55,10 +55,13 @@ app.post("/api/payments", auth, async (req, res, next) => {
       const receiver = await User.findOne({ $or: [{ paymentId: recipient.toLowerCase() }, { phone: recipient }] }).session(session);
       if (!receiver) throw Object.assign(new Error("Recipient account was not found."), { status: 404 });
       if (sender.id === receiver.id) throw Object.assign(new Error("You cannot pay your own account."), { status: 400 });
-      const field = kind === "money" ? "balances.moneyInr" : "balances.energyKwh";
-      if (sender.balances[kind === "money" ? "moneyInr" : "energyKwh"] < value) throw Object.assign(new Error("Insufficient balance."), { status: 400 });
-      await User.updateOne({ _id: sender._id }, { $inc: { [field]: -value } }, { session });
-      await User.updateOne({ _id: receiver._id }, { $inc: { [field]: value } }, { session });
+      // Energy and money are independent wallets. Never convert or debit money
+      // when an energy transfer is requested.
+      const balanceKey = kind === "money" ? "moneyInr" : "energyKwh";
+      const balanceField = `balances.${balanceKey}`;
+      if (sender.balances[balanceKey] < value) throw Object.assign(new Error("Insufficient balance."), { status: 400 });
+      await User.updateOne({ _id: sender._id }, { $inc: { [balanceField]: -value } }, { session });
+      await User.updateOne({ _id: receiver._id }, { $inc: { [balanceField]: value } }, { session });
       await Transaction.create([{ reference: `EP-${crypto.randomUUID().slice(0, 8).toUpperCase()}`, kind, amount: value, sender: sender._id, receiver: receiver._id, note }], { session });
     });
     res.status(201).json({ message: "Payment completed." });
