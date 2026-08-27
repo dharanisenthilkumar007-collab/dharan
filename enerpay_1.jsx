@@ -61,7 +61,8 @@ export default function EnerPay() {
   };
   const userData = account ? {
     ...account, profileInitial: account.name.split(" ").map(n=>n[0]).join("").slice(0,2), energyBalance: account.balances.energyKwh,
-    moneyBalance: account.balances.moneyInr, todayGenerated: account.solarKwh || 0, pricePerUnit: ENERGY_PRICE_PER_KWH, verificationStatus:"Verified",
+    // Rupee value is derived from the live energy balance, not moneyInr in the database.
+    moneyBalance: Number((account.balances.energyKwh * ENERGY_PRICE_PER_KWH).toFixed(2)), todayGenerated: account.solarKwh || 0, pricePerUnit: ENERGY_PRICE_PER_KWH, verificationStatus:"Verified",
     sources:[{ type:"Solar Panel", units:12, rate:3.2, daily:account.solarKwh || 0, icon:"☀️" }]
   } : null;
   const txHistory = transactions.map(tx => {
@@ -403,7 +404,7 @@ function DashboardScreen({ navigate, userData, txHistory, weeklyData }) {
             flex:1, background:"rgba(255,193,7,0.15)", borderRadius:20, padding:"16px 18px",
             border:"1px solid rgba(255,193,7,0.3)", backdropFilter:"blur(10px)",
           }}>
-            <div style={{ fontSize:11, color:"rgba(255,255,255,0.65)", fontWeight:600, letterSpacing:0.5 }}>MONEY BALANCE</div>
+            <div style={{ fontSize:11, color:"rgba(255,255,255,0.65)", fontWeight:600, letterSpacing:0.5 }}>ENERGY VALUE</div>
             <div style={{ fontSize:28, fontWeight:900, color:"#fff", marginTop:4, letterSpacing:"-0.5px" }}>
               ₹{userData.moneyBalance.toLocaleString()}
             </div>
@@ -531,7 +532,7 @@ function ProfileScreen({ navigate, userData, signOut }) {
         <div style={{ display:"flex", gap:12, marginBottom:20 }}>
           {[
             { label:"Energy Balance", value:`${userData.energyBalance} kWh`, color:"#0066FF" },
-            { label:"Money Balance", value:`₹${userData.moneyBalance.toLocaleString()}`, color:"#f59e0b" },
+            { label:"Energy Value", value:`₹${userData.moneyBalance.toLocaleString()}`, color:"#f59e0b" },
           ].map(s => (
             <div key={s.label} style={{ flex:1, background:"#fff", borderRadius:16, padding:14, textAlign:"center", boxShadow:"0 2px 10px rgba(0,0,0,0.06)" }}>
               <div style={{ fontSize:11, color:"#64748b", fontWeight:500 }}>{s.label}</div>
@@ -625,7 +626,7 @@ function EnergySourcesScreen({ navigate, userData }) {
               </div>
               <div style={{ flex:1, background:"#f8fafc", borderRadius:12, padding:"10px 12px" }}>
                 <div style={{ fontSize:10, color:"#94a3b8", fontWeight:500 }}>Est. Earnings</div>
-                <div style={{ fontSize:16, fontWeight:800, color:"#f59e0b" }}>₹{(src.daily*6.85).toFixed(0)}</div>
+                <div style={{ fontSize:16, fontWeight:800, color:"#f59e0b" }}>₹{(src.daily*ENERGY_PRICE_PER_KWH).toFixed(0)}</div>
               </div>
             </div>
             {/* Mini bar */}
