@@ -26,6 +26,7 @@ const weeklyData = [
 ];
 
 const priceData = [6.20, 6.45, 6.30, 6.80, 6.95, 6.85, 7.10, 6.90, 6.85];
+const ENERGY_PRICE_PER_KWH = 6.56;
 
 export default function EnerPay() {
   const [screen, setScreen] = useState(SCREENS.SPLASH);
@@ -60,7 +61,7 @@ export default function EnerPay() {
   };
   const userData = account ? {
     ...account, profileInitial: account.name.split(" ").map(n=>n[0]).join("").slice(0,2), energyBalance: account.balances.energyKwh,
-    moneyBalance: account.balances.moneyInr, todayGenerated: account.solarKwh || 0, pricePerUnit: 6.85, verificationStatus:"Verified",
+    moneyBalance: account.balances.moneyInr, todayGenerated: account.solarKwh || 0, pricePerUnit: ENERGY_PRICE_PER_KWH, verificationStatus:"Verified",
     sources:[{ type:"Solar Panel", units:12, rate:3.2, daily:account.solarKwh || 0, icon:"☀️" }]
   } : null;
   const txHistory = transactions.map(tx => {
@@ -864,12 +865,13 @@ function QRScanScreen({ navigate, userData, setScannedRecipient }) {
             background:"#fff", borderRadius:24, padding:20,
             boxShadow:"0 20px 60px rgba(0,102,255,0.3)",
           }}>
-            {/* Fake QR */}
-            <div style={{ width:200, height:200, display:"grid", gridTemplateColumns:"repeat(10,1fr)", gridTemplateRows:"repeat(10,1fr)", gap:2 }}>
-              {Array.from({length:100}).map((_,i) => (
-                <div key={i} style={{ borderRadius:2, background: ((userData?.paymentId || "enerpay").charCodeAt(i % (userData?.paymentId || "enerpay").length) + i * 11) % 5 > 1 ? "#0a0a1a" : "transparent" }} />
-              ))}
-            </div>
+            <img
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&format=svg&data=${encodeURIComponent(userData?.qrPayload || "")}`}
+              alt={`EnerPay QR code for ${userData?.paymentId || "your account"}`}
+              width="200"
+              height="200"
+              style={{ display:"block" }}
+            />
           </div>
           <div style={{ marginTop:16, textAlign:"center" }}>
             <div style={{ fontSize:16, fontWeight:700, color:"#fff" }}>{userData?.name}</div>
@@ -972,7 +974,7 @@ function SendEnergyScreen({ navigate, api, refresh, scannedRecipient, setScanned
           </div>
           {sendType==="energy" && (
             <div style={{ fontSize:12, color:"#64748b", marginTop:6 }}>
-              Value: ≈ ₹{(Number(amount)*6.85).toFixed(2)} at current rate — your money balance will not be debited
+              Value: ₹{(Math.max(0, Number(amount) || 0) * ENERGY_PRICE_PER_KWH).toFixed(2)} at ₹{ENERGY_PRICE_PER_KWH}/kWh — your money balance will not be debited
             </div>
           )}
           <div style={{ display:"flex", gap:8, marginTop:10 }}>
