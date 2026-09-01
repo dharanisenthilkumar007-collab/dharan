@@ -967,7 +967,7 @@ function SendEnergyScreen({ navigate, api, refresh, scannedRecipient, setScanned
             <div style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)", fontSize:22, fontWeight:900, color:"#0066FF" }}>
               {sendType==="energy" ? "⚡" : "₹"}
             </div>
-            <input value={amount} onChange={e=>setAmount(e.target.value)} style={{
+            <input type="number" min="0.01" step="0.01" value={amount} onChange={e=>setAmount(e.target.value)} style={{
               width:"100%", padding:"14px 14px 14px 48px", borderRadius:14,
               border:"2px solid #0066FF", fontSize:28, fontWeight:900, color:"#1e293b",
               outline:"none", fontFamily:"inherit",

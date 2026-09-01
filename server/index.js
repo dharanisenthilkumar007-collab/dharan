@@ -13,6 +13,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+const roundToTwoDecimals = value => Math.round((value + Number.EPSILON) * 100) / 100;
 const sign = id => jwt.sign({ sub: id }, process.env.JWT_SECRET, { expiresIn: "7d" });
 const publicUser = user => ({ id: user._id, name: user.name, phone: user.phone, paymentId: user.paymentId, qrPayload: user.qrPayload, balances: user.balances, solarKwh: user.solarKwh });
 
@@ -72,8 +73,8 @@ app.post("/api/payments", auth, async (req, res, next) => {
     const { recipient, kind, amount, note = "" } = req.body;
     const value = Number(amount);
 
-    if (!recipient || !["money", "energy"].includes(kind) || !Number.isFinite(value) || value <= 0) {
-      return res.status(400).json({ message: "Enter a valid recipient, payment type, and amount." });
+    if (!recipient || !["money", "energy"].includes(kind) || !Number.isFinite(value) || value <= 0 || value !== roundToTwoDecimals(value)) {
+      return res.status(400).json({ message: "Enter a valid recipient, payment type, and amount with up to two decimal places." });
     }
 
     await session.withTransaction(async () => {
@@ -89,8 +90,8 @@ app.post("/api/payments", auth, async (req, res, next) => {
       if (!receiver) throw Object.assign(new Error("Recipient account was not found."), { status: 404 });
       if (sender.id === receiver.id) throw Object.assign(new Error("You cannot pay your own account."), { status: 400 });
 
-      const energyKwh = kind === "energy" ? value : value / 6.56;
-      const moneyInr = kind === "energy" ? value * 6.56 : value;
+      const energyKwh = roundToTwoDecimals(kind === "energy" ? value : value / 6.56);
+      const moneyInr = roundToTwoDecimals(kind === "energy" ? value * 6.56 : value);
 
       if (sender.balances.energyKwh < energyKwh || sender.balances.moneyInr < moneyInr) {
         throw Object.assign(new Error("Insufficient energy or money balance."), { status: 400 });
