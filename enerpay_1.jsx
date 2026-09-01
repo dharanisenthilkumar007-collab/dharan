@@ -60,9 +60,9 @@ export default function EnerPay() {
     setToken(null); setAccount(null); setTransactions([]); setScreen(SCREENS.LOGIN); setAnimating(false);
   };
   const userData = account ? {
-    ...account, profileInitial: account.name.split(" ").map(n=>n[0]).join("").slice(0,2), energyBalance: account.balances.energyKwh,
-    // Rupee value is derived from the live energy balance, not moneyInr in the database.
-    moneyBalance: Number((account.balances.energyKwh * ENERGY_PRICE_PER_KWH).toFixed(2)), todayGenerated: account.solarKwh || 0, pricePerUnit: ENERGY_PRICE_PER_KWH, verificationStatus:"Verified",
+     ...account, profileInitial: account.name.split(" ").map(n=>n[0]).join("").slice(0,2), energyBalance: account.balances.energyKwh,
+    // Use the money wallet so sends and receipts immediately appear on the dashboard.
+    moneyBalance: Number(account.balances.moneyInr || 0), todayGenerated: account.solarKwh || 0, pricePerUnit: ENERGY_PRICE_PER_KWH, verificationStatus:"Verified",
     sources:[{ type:"Solar Panel", units:12, rate:3.2, daily:account.solarKwh || 0, icon:"☀️" }]
   } : null;
   const txHistory = transactions.map(tx => {
@@ -899,7 +899,7 @@ function SendEnergyScreen({ navigate, api, refresh, scannedRecipient, setScanned
       setScannedRecipient("");
     }
   }, [scannedRecipient, setScannedRecipient]);
-  const pay = async () => { setError(""); setBusy(true); try { await api("/payments", { method:"POST", body:JSON.stringify({ recipient, kind:sendType, amount, note }) }); await refresh(); navigate(SCREENS.HISTORY); } catch (e) { setError(e.message); } finally { setBusy(false); } };
+  const pay = async () => { setError(""); setBusy(true); try { await api("/payments", { method:"POST", body:JSON.stringify({ recipient, kind:sendType, amount, note }) }); await refresh(); navigate(SCREENS.DASHBOARD); } catch (e) { setError(e.message); } finally { setBusy(false); } };
   return (
     <div style={{ width:"100%", height:"100%", background:"#f0f4ff", display:"flex", flexDirection:"column", overflow:"hidden" }}>
       <div style={{ background:"linear-gradient(160deg,#001a4d,#0052cc)", padding:"44px 24px 24px", borderRadius:"0 0 32px 32px" }}>
@@ -975,7 +975,7 @@ function SendEnergyScreen({ navigate, api, refresh, scannedRecipient, setScanned
           </div>
           {sendType==="energy" && (
             <div style={{ fontSize:12, color:"#64748b", marginTop:6 }}>
-              Value: ₹{(Math.max(0, Number(amount) || 0) * ENERGY_PRICE_PER_KWH).toFixed(2)} at ₹{ENERGY_PRICE_PER_KWH}/kWh — your money balance will not be debited
+              Value: ₹{(Math.max(0, Number(amount) || 0) * ENERGY_PRICE_PER_KWH).toFixed(2)} at ₹{ENERGY_PRICE_PER_KWH}/kWh — Both energy and money balances will be updated
             </div>
           )}
           <div style={{ display:"flex", gap:8, marginTop:10 }}>
