@@ -395,7 +395,7 @@ function DashboardScreen({ navigate, userData, txHistory, weeklyData }) {
           }}>
             <div style={{ fontSize:11, color:"rgba(255,255,255,0.65)", fontWeight:600, letterSpacing:0.5 }}>ENERGY BALANCE</div>
             <div style={{ fontSize:28, fontWeight:900, color:"#fff", marginTop:4, letterSpacing:"-0.5px" }}>
-              {userData.energyBalance}<span style={{ fontSize:13, fontWeight:500, marginLeft:3 }}>kWh</span>
+              {Number(userData.energyBalance || 0).toFixed(2)}<span style={{ fontSize:13, fontWeight:500, marginLeft:3 }}>kWh</span>
             </div>
             <div style={{ fontSize:11, color:"#4ade80", marginTop:4, fontWeight:600 }}>↑ +{userData.todayGenerated} today</div>
           </div>
