@@ -90,7 +90,7 @@ app.post("/api/payments", auth, async (req, res, next) => {
       if (!receiver) throw Object.assign(new Error("Recipient account was not found."), { status: 404 });
       if (sender.id === receiver.id) throw Object.assign(new Error("You cannot pay your own account."), { status: 400 });
 
-      const energyKwh = roundToTwoDecimals(kind === "energy" ? value : value / 6.56);
+      const energyKwh = kind === "energy" ? value : value / 6.56;
       const moneyInr = roundToTwoDecimals(kind === "energy" ? value * 6.56 : value);
 
       if (sender.balances.energyKwh < energyKwh || sender.balances.moneyInr < moneyInr) {
